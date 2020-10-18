@@ -109,30 +109,34 @@ def BFS(state):
 
 def BFS_WIP(state):
 	index = 0
-	frontier = [state]
+	frontier = [(index, state)]
 	discovered = set(tuple(state.items()))
 	parents = {index: None}
-	index_state_map = {index: state}
+	index_state_map = {index: (0, state)}
 	while frontier:
-		current_state = frontier.pop(0)
+		(parent_index, current_state) = frontier.pop(0)
 		discovered.add(tuple(current_state.items()))
 		if IsGoal(current_state):
 			parents[-1] = current_state
 			path = [index]
 			states = [current_state]
+			tiles = []
 			while parents[index]:
 				path.append(parents[index])
 				states.append(index_state_map[index])
+				tiles.append(index_state_map[index][0])
 				index = parents[index]
-			return reversed(path), reversed(states)
+			path.append(parents[index])
+			states.append(index_state_map[index])
+			tiles.append(index_state_map[index][0])
+			return list(reversed(tiles)), list(reversed(path)), list(reversed(states))
 		for moved, neighbor in ComputeNeighbors(current_state):
 			check = tuple(neighbor.items())
 			if check not in discovered:
-				temp = index
-				index += 1
-				parents[index] = temp
-				index_state_map[index] = neighbor
-				frontier.append(neighbor)
+				index = parent_index+1
+				parents[index] = parent_index
+				index_state_map[index] = (moved, neighbor)
+				frontier.append((index, neighbor))
 				discovered.add(check)
 				
 				
@@ -210,13 +214,15 @@ IsGoal(state)
 
 # print(state)
 
-path, states = BFS_WIP(state)
-print(path)
+tiles, path, states = BFS_WIP(state)
+print(tiles)
+# print(path)
+# print(states)
 
-# print("BFS")
-# for key in path:
-# 	# print(key[1])
-# 	DebugPrint(size, path[key])
+print("BFS")
+for i in states:
+	print(i[0])
+	DebugPrint(size, i[1])
 
 
 # path = BFS(state)
