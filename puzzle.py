@@ -108,30 +108,33 @@ def BFS(state):
 				parents[moved] = current_state
 
 def BFS_WIP(state):
+	index = 0
 	frontier = [state]
 	discovered = set(tuple(state.items()))
-	parents = [(["*"], -1)]
-	parent_key = parents[-1][0]
+	parents = {index: None}
+	index_state_map = {index: state}
 	while frontier:
 		current_state = frontier.pop(0)
 		discovered.add(tuple(current_state.items()))
 		if IsGoal(current_state):
-			parents.append(current_state)
-			return parents
-		# print(current_state)
-		# print(ComputeNeighbors(current_state))
-		# swapped_parents = swap_key_value(parents)
-		# print(swapped_parents)
-		# print("Parents: " +str(parents))
-		# print("Parents[-1][0]: " +str(parents[-1][0]))
-		
+			parents[-1] = current_state
+			path = [index]
+			states = [current_state]
+			while parents[index]:
+				path.append(parents[index])
+				states.append(index_state_map[index])
+				index = parents[index]
+			return reversed(path), reversed(states)
 		for moved, neighbor in ComputeNeighbors(current_state):
 			check = tuple(neighbor.items())
 			if check not in discovered:
-				# parent_key.append(moved)
+				temp = index
+				index += 1
+				parents[index] = temp
+				index_state_map[index] = neighbor
 				frontier.append(neighbor)
 				discovered.add(check)
-				parents.append((moved, current_state))
+				
 				
 
 def DFS(state):
@@ -148,23 +151,6 @@ def DFS(state):
 			check = tuple(neighbor.items())
 			if check not in discovered:
 				frontier.insert(0, neighbor)
-				discovered.add(check)
-				parents[moved] = current_state
-
-def BFS_from_to(start, target):
-	frontier = [start]
-	discovered = set(tuple(state.items()))
-	parents = {0: None}
-	while frontier:
-		current_state = frontier.pop(0)
-		discovered.add(tuple(current_state.items()))
-		if current_state == target:
-			parents[-1] = current_state
-			return parents
-		for moved, neighbor in ComputeNeighbors(current_state):
-			check = tuple(neighbor.items())
-			if check not in discovered:
-				frontier.append(neighbor)
 				discovered.add(check)
 				parents[moved] = current_state
 
@@ -224,13 +210,22 @@ IsGoal(state)
 
 # print(state)
 
-path = BFS(state)
+path, states = BFS_WIP(state)
 print(path)
-del path[0]
-print("BFS")
-for key in path:
-	# print(key[1])
-	DebugPrint(size, path[key])
+
+# print("BFS")
+# for key in path:
+# 	# print(key[1])
+# 	DebugPrint(size, path[key])
+
+
+# path = BFS(state)
+# print(path)
+# del path[0]
+# print("BFS")
+# for key in path:
+# 	# print(key[1])
+# 	DebugPrint(size, path[key])
 
 # path = DFS(state)
 # del path[0]
