@@ -1,7 +1,7 @@
 import numpy as np
 import math
 import copy
-import collections
+import heapq
 
 def LoadFromFile(file):
 	n = 0
@@ -90,22 +90,43 @@ def find_goal(state):
 def IsGoal(state):
 	return state == find_goal(state)
 
+def reconstruct(current_state, parent_index, parents, index_state_map):
+	index = parent_index+1
+	parents[index] = parent_index
+	index_state_map[index] = ('*', current_state)
+	path = [index]
+	states = []
+	tiles = []
+	while parents[index]:
+		path.append(parents[index])
+		states.append(index_state_map[index])
+		tiles.append(index_state_map[index][0])
+		index = parents[index]
+	path.append(parents[index])
+	states.append(index_state_map[index])
+	tiles.append(index_state_map[index][0])
+	return list(reversed(tiles)), list(reversed(path)), list(reversed(states))
+
 def BFS(state):
-	frontier = [state]
+	index = 0
+	frontier = [(index, state)]
 	discovered = set(tuple(state.items()))
-	parents = {0: None}
+	parents = {index: None}
+	index_state_map = {index: (0, state)}
 	while frontier:
-		current_state = frontier.pop(0)
+		(parent_index, current_state) = frontier.pop(0)
 		discovered.add(tuple(current_state.items()))
 		if IsGoal(current_state):
-			parents[-1] = current_state
-			return parents
+			return reconstruct(current_state, parent_index, parents, index_state_map)[0]	
 		for moved, neighbor in ComputeNeighbors(current_state):
 			check = tuple(neighbor.items())
 			if check not in discovered:
-				frontier.append(neighbor)
+				index = parent_index+1
+				parents[index] = parent_index
+				index_state_map[index] = (moved, neighbor)
+				frontier.append((index, neighbor))
 				discovered.add(check)
-				parents[moved] = current_state
+	return None
 
 def BFS_WIP(state):
 	index = 0
@@ -117,19 +138,7 @@ def BFS_WIP(state):
 		(parent_index, current_state) = frontier.pop(0)
 		discovered.add(tuple(current_state.items()))
 		if IsGoal(current_state):
-			parents[-1] = current_state
-			path = [index]
-			states = [current_state]
-			tiles = []
-			while parents[index]:
-				path.append(parents[index])
-				states.append(index_state_map[index])
-				tiles.append(index_state_map[index][0])
-				index = parents[index]
-			path.append(parents[index])
-			states.append(index_state_map[index])
-			tiles.append(index_state_map[index][0])
-			return list(reversed(tiles)), list(reversed(path)), list(reversed(states))
+			return reconstruct(current_state, parent_index, parents, index_state_map)
 		for moved, neighbor in ComputeNeighbors(current_state):
 			check = tuple(neighbor.items())
 			if check not in discovered:
@@ -138,52 +147,160 @@ def BFS_WIP(state):
 				index_state_map[index] = (moved, neighbor)
 				frontier.append((index, neighbor))
 				discovered.add(check)
-				
-				
+	return None
 
 def DFS(state):
-	frontier = [state]
+	index = 0
+	frontier = [(index, state)]
 	discovered = set(tuple(state.items()))
-	parents = {0: None}
+	parents = {index: None}
+	index_state_map = {index: (0, state)}
 	while frontier:
-		current_state = frontier.pop(0)
+		(parent_index, current_state) = frontier.pop(0)
 		discovered.add(tuple(current_state.items()))
 		if IsGoal(current_state):
-			parents[-1] = current_state
-			return parents
+			return reconstruct(current_state, parent_index, parents, index_state_map)[0]
 		for moved, neighbor in ComputeNeighbors(current_state):
 			check = tuple(neighbor.items())
 			if check not in discovered:
-				frontier.insert(0, neighbor)
+				index = parent_index+1
+				parents[index] = parent_index
+				index_state_map[index] = (moved, neighbor)
+				frontier.insert(0, (index, neighbor))
 				discovered.add(check)
-				parents[moved] = current_state
+	return None
+
+def DFS_WIP(state):
+	index = 0
+	frontier = [(index, state)]
+	discovered = set(tuple(state.items()))
+	parents = {index: None}
+	index_state_map = {index: (0, state)}
+	while frontier:
+		(parent_index, current_state) = frontier.pop(0)
+		discovered.add(tuple(current_state.items()))
+		if IsGoal(current_state):
+			return reconstruct(current_state, parent_index, parents, index_state_map)
+		for moved, neighbor in ComputeNeighbors(current_state):
+			check = tuple(neighbor.items())
+			if check not in discovered:
+				index = parent_index+1
+				parents[index] = parent_index
+				index_state_map[index] = (moved, neighbor)
+				frontier.insert(0, (index, neighbor))
+				discovered.add(check)	
+	return None
 
 def BidirectionalSearch(state):
 	goal = find_goal(state)
-
-	frontier_forward = [state]
-	frontier_backward = [goal]
+	index_f = 0
+	index_b = 0
+	frontier_forward = [(index_f,state)]
+	frontier_backward = [(index_b, goal)]
 
 	discovered_forward = set(tuple(state.items()))
 	discovered_backward = set(tuple(goal.items()))
 
-	parents_forward = {0: None}
-	parents_backward = collections.OrderedDict({-1: None})
+	parents_forward = {index_f: None}
+	parents_backward = {index_b: None}
+
+	index_state_map_f = {index_f: (0, state)}
+	index_state_map_b = {index_b: (0, goal)}
 
 	while frontier_forward and frontier_backward:
 		
-		current_state_forward = frontier_forward.pop(0)
-		current_state_backward = frontier_backward.pop(0)
+		(parent_index_f, current_state_forward) = frontier_forward.pop(0)
+		(parent_index_b, current_state_backward) = frontier_backward.pop(0)
 
 		discovered_forward.add(tuple(current_state_forward.items()))
 		discovered_backward.add(tuple(current_state_backward.items()))
 
 		if len(discovered_forward.intersection(discovered_backward)) >= 1:
-			# print(parents_forward, "\n", parents_backward)
-			parents_backward = {k: parents_backward[k] for k in reversed(list(parents_backward.keys()))}
-			return {**parents_forward, **parents_backward}
+			index_f = parent_index_f + 1
+			parents_forward[index_f] = parent_index_f
+			index_state_map_f[index_f] = ('0', current_state_forward)
 
-		(moved_f, neighbor_f), (moved_b, neighbor_b) = (ComputeNeighbors(current_state_forward), ComputeNeighbors(current_state_backward))
+			index_b = parent_index_b + 1
+			parents_backward[index_b] = parent_index_b
+			# index_state_map_b[index_b] = ('0', current_state_backward)
+
+			tiles_f, tiles_b = [], []
+			while parents_forward[index_f] and parents_backward[index_b]:
+				tiles_f.append(index_state_map_f[index_f][0])
+				index_f = parents_forward[index_f]
+
+				tiles_b.append(index_state_map_b[index_b][0])
+				index_b = parents_backward[index_b]
+			to_ret = list(reversed(tiles_f)) + tiles_b
+			to_ret.remove('0')
+			return to_ret
+
+		for moved_f, neighbor_f in ComputeNeighbors(current_state_forward):
+			check_f = tuple(neighbor_f.items())
+			if  check_f not in discovered_forward:
+				index_f = parent_index_f + 1
+				parents_forward[index_f] = parent_index_f
+				index_state_map_f[index_f] = (moved_f, neighbor_f)
+				frontier_forward.append((index_f, neighbor_f))
+				discovered_forward.add(check_f)
+
+		for moved_b, neighbor_b in ComputeNeighbors(current_state_backward):
+			check_b = tuple(neighbor_b.items())
+			if check_b not in discovered_backward:
+				index_b = parent_index_b + 1
+				parents_backward[index_b] = parent_index_b
+				index_state_map_b[index_b] = (moved_b, neighbor_b)
+				frontier_backward.append((index_b, neighbor_b))
+				discovered_backward.add(check_b)
+	return None
+
+def BidirectionalWIP(state):
+	goal = find_goal(state)
+	index_f = 0
+	index_b = 0
+	frontier_forward = [(index_f,state)]
+	frontier_backward = [(index_b, goal)]
+
+	discovered_forward = set(tuple(state.items()))
+	discovered_backward = set(tuple(goal.items()))
+
+	parents_forward = {index_f: None}
+	parents_backward = {index_b: None}
+
+	index_state_map_f = {index_f: (0, state)}
+	index_state_map_b = {index_b: (0, goal)}
+
+	while frontier_forward and frontier_backward:
+		
+		(parent_index_f, current_state_forward) = frontier_forward.pop(0)
+		(parent_index_b, current_state_backward) = frontier_backward.pop(0)
+
+		discovered_forward.add(tuple(current_state_forward.items()))
+		discovered_backward.add(tuple(current_state_backward.items()))
+
+		if len(discovered_forward.intersection(discovered_backward)) >= 1:
+			index_f = parent_index_f + 1
+			parents_forward[index_f] = parent_index_f
+			index_state_map_f[index_f] = ('0', current_state_backward)
+
+			index_b = parent_index_b + 1
+			parents_backward[index_b] = parent_index_b
+			# index_state_map_b[index_b] = ('0', current_state_backward)
+
+			tiles_f, tiles_b, states_f, states_b = [], [], [], []
+			while parents_forward[index_f] and parents_backward[index_b]:
+				tiles_f.append(index_state_map_f[index_f][0])
+				states_f.append(index_state_map_f[index_f])
+				index_f = parents_forward[index_f]
+
+				tiles_b.append(index_state_map_b[index_b][0])
+				states_b.append(index_state_map_b[index_b])
+				index_b = parents_backward[index_b]
+			to_ret = list(reversed(tiles_f)) + tiles_b
+			to_ret.remove('0')
+			return to_ret, list(reversed(states_f)) + states_b
+
+		# (moved_f, neighbor_f), (moved_b, neighbor_b) = (ComputeNeighbors(current_state_forward), ComputeNeighbors(current_state_backward))
 		# # moved_f, neighbor_f = forward[0], for
 		# # print(both_neighbors)
 		# print(moved_f, neighbor_f, moved_b, neighbor_b)
@@ -191,16 +308,106 @@ def BidirectionalSearch(state):
 		for moved_f, neighbor_f in ComputeNeighbors(current_state_forward):
 			check_f = tuple(neighbor_f.items())
 			if  check_f not in discovered_forward:
-				frontier_forward.append(neighbor_f)
+				index_f = parent_index_f + 1
+				parents_forward[index_f] = parent_index_f
+				index_state_map_f[index_f] = (moved_f, neighbor_f)
+				frontier_forward.append((index_f, neighbor_f))
 				discovered_forward.add(check_f)
-				parents_forward[moved_f] = current_state_forward
 
 		for moved_b, neighbor_b in ComputeNeighbors(current_state_backward):
 			check_b = tuple(neighbor_b.items())
 			if check_b not in discovered_backward:
-				frontier_backward.append(neighbor_f)
+				index_b = parent_index_b + 1
+				parents_backward[index_b] = parent_index_b
+				index_state_map_b[index_b] = (moved_b, neighbor_b)
+				frontier_backward.append((index_b, neighbor_b))
 				discovered_backward.add(check_b)
-				parents_backward[moved_b] = current_state_backward
+	return None
+
+def h(current, goal):
+	man_dist = 0
+	for i in current:
+		if i != "*":
+			(x_i, y_i) = current[i]
+			(x_g, y_g) = goal[i]
+			man_dist += abs(x_i - x_g) + abs(y_i-y_g)
+	return man_dist
+
+def AStar(state):
+	index = 0
+	g_score = 0
+	goal = find_goal(state)
+	# print(goal)
+	f_score = h(state, goal)+g_score
+	
+	g, f = {}, {}
+	g[index] = g_score
+	f[index] = h(state, goal)+g_score
+
+	close_vertices = set()
+	# print(tuple(state.items()))
+	open_vertices = set()
+	open_vertices.add(tuple(state.items()))
+
+
+	frontier = [(f_score, g_score, index)]
+	# discovered = set(tuple(state.items()))
+	parents = {index: None}
+	index_state_map = {index: (0, state)}
+	while frontier:
+		current_state = None
+		current_F_score = None
+		for (f_score, g_score, index) in frontier:
+			if current_state is None or f[index] < current_F_score:
+				current_F_score = f[index]
+				current_state = index_state_map[index][1]
+				parent_f_score, parent_g_score, parent_index = f_score, g_score, index
+
+		if IsGoal(current_state):
+			return reconstruct(current_state, parent_index, parents, index_state_map)
+
+		frontier.remove((parent_f_score, parent_g_score, parent_index))
+		tuple_state = tuple(current_state.items())		
+		# print(open_vertices)
+		# print(tuple_state)
+		# open_vertices.remove(tuple_state)
+		close_vertices.add(tuple_state)
+
+		# (parent_f_score, parent_g_score, parent_index) = frontier.pop(0)
+		# current_state = index_state_map[parent_index][1]
+		# # print(current_state)
+		# print(frontier)
+		# discovered.add(tuple(current_state.items()))
+		# g_score = parent_g_score+1
+
+		for moved, neighbor in ComputeNeighbors(current_state):
+			tuple_neighbor = tuple(neighbor.items())
+			if tuple_neighbor in close_vertices:
+				continue
+			temp_g = g[parent_index] + 1
+			if tuple_neighbor not in open_vertices:
+				open_vertices.add(tuple_neighbor)
+			elif temp_g >= g[index]:
+				continue
+			
+			index = parent_index+1
+			index_state_map[index] = (moved, neighbor)
+			parents[index] = parent_index
+			# print(neighbor)
+			g[index] = temp_g
+			H = h(neighbor, goal)
+			f[index] = g[index] + H
+			frontier.append((f[index], g[index], index))
+			# check = tuple(neighbor.items())
+			# if check not in discovered:
+			# 	
+			# 	parents[index] = parent_index
+			# 	index_state_map[index] = (moved, neighbor)
+			# 	f_score = h(neighbor, goal) + g_score
+			# 	heapq.heappush(frontier, (f_score, g_score, index))
+			# 	discovered.add(check)
+	print(index_state_map)
+	return None
 
 size, state = LoadFromFile("input.txt")
 print(state)
@@ -214,35 +421,23 @@ IsGoal(state)
 
 # print(state)
 
-tiles, path, states = BFS_WIP(state)
+# tiles, path, states = BFS_WIP(state)
+# tiles, path, states = DFS_WIP(state)
+print(AStar(state))
+# tiles, states = BidirectionalWIP(state)
+print(states)
+# for i in states:
+# 	DebugPrint(size, i[1])
 print(tiles)
-# print(path)
-# print(states)
+print(path)
+# print(len(tiles), len(path), len(states))
 
-print("BFS")
-for i in states:
-	print(i[0])
-	DebugPrint(size, i[1])
+# tiles = BFS(state)
+# print(tiles)
 
+# tiles = DFS(state)
+# print(tiles)
 
-# path = BFS(state)
-# print(path)
-# del path[0]
-# print("BFS")
-# for key in path:
-# 	# print(key[1])
-# 	DebugPrint(size, path[key])
+# tiles = BidirectionalSearch(state)
+# print(tiles)
 
-# path = DFS(state)
-# del path[0]
-# print("DFS")
-# for key in path:
-# 	DebugPrint(size, path[key])
-
-# path = BidirectionalSearch(state)
-# del path[0]
-# del path[-1]
-# # print(path)
-# print("BidirectionalSearch")
-# for key in path:
-# 	DebugPrint(size, path[key])
