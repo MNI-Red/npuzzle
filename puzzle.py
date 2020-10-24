@@ -1,7 +1,7 @@
 import numpy as np
 import math
 import copy
-import heapq
+import heapq as hq
 
 def LoadFromFile(file):
 	n = 0
@@ -334,6 +334,38 @@ def h(current, goal):
 	return man_dist
 
 def AStar(state):
+	index = 0
+	g_score = 0
+	goal = find_goal(state)
+	f_score = g_score + h(state, goal)
+	frontier = hq.heapify([(f_score, g_score, index)])
+	discovered = set(tuple(state.items()))
+	parents = {index: None}
+	index_state_map = {index: (0, state)}
+	while frontier:
+		(parent_f, parent_g, parent_index) = hq.heappop(frontier)
+		discovered.add(tuple(current_state.items()))
+
+		if IsGoal(current_state):
+			return reconstruct(current_state, parent_index, parents, index_state_map)[0]
+
+		for moved, neighbor in ComputeNeighbors(current_state):
+			check = tuple(neighbor.items())
+			if check not in discovered:
+				index = parent_index+1
+				parents[index] = parent_index
+				index_state_map[index] = (moved, neighbor)
+
+				g_score = parent_g + 1
+				f_score = h(neighbor, goal) + g_score
+				hq.heappush(frontier, (f_score, g_score, index))
+				print(frontier)
+				discovered.add(check)
+
+	print(index_state_map)
+	return None
+
+def AStarWIP(state):
 	index = 0
 	g_score = 0
 	goal = find_goal(state)
